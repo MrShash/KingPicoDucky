@@ -102,15 +102,22 @@ function setPreview() {
   const raw = $('payloadData').value.trim();
   const pv = $('preview');
   if (!raw) { pv.textContent = ''; return; }
-  const rows = raw.split('\n').length;
-  const sc = buildScript(san(raw));
-  const n = Math.ceil(sc.length / CHUNK) || 0;
-  const tw = +$('tabWait').value || 0, rw = +$('rowWait').value || 0;
-  const roughMs = rows * (rw + 100) + (sc.length * tw / CHUNK);
-  pv.textContent = `${rows} rows  ·  ${sc.length} instructions  ·  ${n} chunk${n !== 1 ? 's' : ''}  ·  est. ~${fmtMs(roughMs)}`;
+  const isMnemonic = $('mnemonicMode').checked;
+  if (isMnemonic) {
+    const sc = raw.split('\n').filter(l => l.trim());
+    const n = Math.ceil(sc.length / CHUNK) || 0;
+    pv.textContent = `${sc.length} instructions  ·  ${n} chunk${n !== 1 ? 's' : ''}  ·  mnemonic mode`;
+  } else {
+    const rows = raw.split('\n').length;
+    const sc = buildScript(san(raw));
+    const n = Math.ceil(sc.length / CHUNK) || 0;
+    const tw = +$('tabWait').value || 0, rw = +$('rowWait').value || 0;
+    const roughMs = rows * (rw + 100) + (sc.length * tw / CHUNK);
+    pv.textContent = `${rows} rows  ·  ${sc.length} instructions  ·  ${n} chunk${n !== 1 ? 's' : ''}  ·  est. ~${fmtMs(roughMs)}`;
+  }
 }
 
-['initWait', 'tabWait', 'rowWait', 'typeWait', 'payloadData', 'humanize', 'hzFreq', 'hzPx'].forEach(id => {
+['initWait', 'tabWait', 'rowWait', 'typeWait', 'payloadData', 'humanize', 'hzFreq', 'hzPx', 'mnemonicMode'].forEach(id => {
   const el = $(id);
   el.addEventListener(id === 'payloadData' ? 'input' : 'change', setPreview);
 });
@@ -155,13 +162,16 @@ async function run() {
   st.textContent = 'Initialising…';
   $('log').textContent = '';
 
-  const text = san(raw), full = buildScript(text);
+  const isMnemonic = $('mnemonicMode').checked;
+  const full = isMnemonic
+    ? raw.split('\n').filter(l => l.trim())
+    : buildScript(san(raw));
   const chunks = [];
   for (let i = 0; i < full.length; i += CHUNK) chunks.push(full.slice(i, i + CHUNK));
   const total = chunks.length;
   let i = 0;
 
-  logLine(`PAYLOAD LOADED — ${full.length} instructions across ${total} chunk${total !== 1 ? 's' : ''}`);
+  logLine(`PAYLOAD LOADED — ${full.length} instructions across ${total} chunk${total !== 1 ? 's' : ''}${isMnemonic ? ' [mnemonic mode]' : ''}`);
   if ($('humanize').checked) logLine(`mouse jiggler ACTIVE — ${$('hzFreq').value}% chance per key, ±${$('hzPx').value}px`);
   logLine(`start countdown: ${$('initWait').value}ms — click target field NOW`);
   logLine('─'.repeat(48));
