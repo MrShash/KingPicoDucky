@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0f0f12">
+<title>KingPicoDucky</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<main class="wrap">
+<header class="hd">
+<h1 class="title">KingPicoDucky</h1>
+<p class="sub">Auto-feed HID chunks over Wi‑Fi — paste CSV, TSV, or paragraphs.</p>
+</header>
+
+<section class="card">
+<label class="lbl" for="payloadData">Payload</label>
+<textarea id="payloadData" class="ta" placeholder="Paste data here…" spellcheck="false"></textarea>
+<div id="preview" class="preview" aria-live="polite"></div>
+</section>
+
+<section class="card grid">
+<div class="fld"><label class="lbl" for="initWait">Init wait ms</label><input type="number" id="initWait" value="2000" min="0"></div>
+<div class="fld"><label class="lbl" for="tabWait">Tab wait ms</label><input type="number" id="tabWait" value="300" min="0"></div>
+<div class="fld"><label class="lbl" for="rowWait">Enter wait ms</label><input type="number" id="rowWait" value="500" min="0"></div>
+<div class="fld"><label class="lbl" for="typeWait">After-type wait ms</label><input type="number" id="typeWait" value="50" min="0"></div>
+<div class="fld"><label class="lbl" for="charSpeed">Ms per character</label><input type="number" id="charSpeed" value="15" min="1"></div>
+</section>
+
+<div class="actions">
+<button type="button" class="btn btn-go" id="go">Start feeding</button>
+<button type="button" class="btn btn-stop" id="stop" disabled>Stop</button>
+</div>
+
+<div id="stat" class="stat" role="status" aria-live="polite">Idle — adjust settings or paste data.</div>
+<div class="prog" id="progBox" hidden><div class="prog-i" id="prog"></div></div>
+
+<details class="logbox" id="logWrap" open>
+<summary>Activity log</summary>
+<pre class="log" id="log" aria-live="polite"></pre>
+</details>
+</main>
+<script src="script.js"></script>
+</body>
+</html>
