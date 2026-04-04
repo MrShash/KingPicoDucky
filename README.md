@@ -11,6 +11,8 @@ Maintained by **KingShash** (Shaswat Manoj Jha).
 - [Why this exists](#why-this-exists)
 - [What it does](#what-it-does)
 - [Features](#features)
+- [Web interface](#web-interface)
+  - [Ms per character](#ms-per-character-tuning)
 - [Hardware](#hardware)
 - [Install guide](#install-guide)
   - [Step 1: Flash standard CircuitPython](#step-1-flash-standard-circuitpython)
@@ -60,6 +62,55 @@ No custom UF2 fork is required — **official CircuitPython** only, plus two lib
 - **Stop** — Client abort + `POST /stop` so typing stops cooperatively on the device.
 - **`GET /status`** — `busy` / `abort` for debugging or future tooling.
 - **Standard stack** — `adafruit_hid` + `adafruit_httpserver` on stock CircuitPython.
+
+---
+
+## Web interface
+
+Dark, single-page UI served from the Pico. Open it from a phone or laptop on the same Wi‑Fi network as the board’s access point.
+
+![KingPicoDucky web UI — payload, timing controls, start/stop, status, activity log](docs/web-ui.png)
+
+### Layout and controls
+
+| Area | What it does |
+|------|----------------|
+| **Header** | Title and short subtitle (CSV / TSV / paragraphs over Wi‑Fi). |
+| **Payload** | Large monospace field where you paste data. Tab-separated rows behave like Excel copy/paste (tabs move across cells, newlines move down rows). Empty lines still send `ENTER`. |
+| **Live preview** (under payload) | Updates as you type or change settings: **row count**, **generated script line count**, **number of HTTP chunks** (60 script lines per chunk), and a **rough total duration** estimate. |
+| **Init wait (ms)** | Inserts a leading `WAIT` before any keys. Gives you time to click into the target window after pressing Start. |
+| **Tab wait (ms)** | Pause after each `TAB` (moving to the next cell). Helps spreadsheets and forms finish focus moves before the next character. |
+| **Enter wait (ms)** | Pause after each row’s `ENTER` (new line in the sheet or document). |
+| **After-type wait (ms)** | Pause after each `TYPE …` line (each cell’s text). Adds breathing room before `TAB`/`ENTER`. |
+| **Ms per character** | Used **only in the browser** to schedule pauses between chunks — see [below](#ms-per-character-tuning). |
+| **Start feeding** | Builds the script, splits it into chunks, `POST`s each chunk to `/execute`, and waits between chunks using the timing model. Disabled while a run is active. |
+| **Stop** | Aborts the in-flight request, tells the firmware to stop via `POST /stop`, and cancels inter-chunk waits early. Enabled only while feeding. |
+| **Status line** | Plain-language state: idle, per-chunk progress (send vs wait), success, stop, or network error. Marked for screen readers (`role="status"`). |
+| **Progress bar** | Fills as each chunk completes; hidden when idle. |
+| **Activity log** | Collapsible (`<details>`), open by default. Timestamped lines: start, each chunk POST, device reply (`done` / `aborted`), stop requests, errors. Scrolls to the latest line. |
+| **Sanitization** | Non-ASCII characters are stripped before sending (smart quotes/dashes normalized where possible) so the US keyboard layout on the Pico does not mis-type. |
+
+### Ms per character tuning
+
+**Important:** This number does **not** insert a delay between every key inside CircuitPython. On the board, `TYPE` lines are sent with `KeyboardLayoutUS.write()` as fast as USB and the firmware allow.
+
+**What it actually does:** For each chunk, the page estimates duration as:
+
+- sum of every explicit **`WAIT`** in that chunk (from your ms fields), **plus**
+- **(number of characters in all `TYPE` lines in that chunk) × (ms per character)**, **plus**
+- a fixed **~2.5 s** cushion per chunk.
+
+That total is how long the browser **waits after posting a chunk** before sending the next one. So **ms per character** is a **scheduling knob**: it should be large enough that the Pico has usually **finished typing the current chunk** before the next HTTP request arrives. If it is too **small**, the next chunk can start while the host is still catching up → dropped or merged characters. If it is too **large**, feeding is simply slower than necessary.
+
+**Starting points (tune by watching the host):**
+
+| Situation | Try (ms per character) |
+|-----------|-------------------------|
+| Fast PC, light forms, default | **12–18** (repo default in `index.html` is **15**) |
+| Excel / heavy UI, remote desktop, or older hardware | **20–35** |
+| Still seeing swallowed first characters after raising Tab/Enter/After-type waits | **Increase ms per character** in steps of 3–5 until stable |
+
+**How to verify:** If the activity log shows the next chunk sending while the host is still printing the previous cell, increase **ms per character** (or the per-field **WAIT** values) until chunks visibly finish before the next wave starts.
 
 ---
 
@@ -217,6 +268,8 @@ If you do not need that behavior, you can remove or rename `boot.py` and keep on
 ```text
 KingPicoDucky/
 ├── README.md
+├── docs/
+│   └── web-ui.png          # screenshot for README
 ├── boot.py                 # optional: stealth / drive label
 ├── code.py                 # Wi‑Fi AP, HTTP server, HID engine
 ├── network.conf            # AP ssid, password, board IP
@@ -229,7 +282,7 @@ KingPicoDucky/
 **On `CIRCUITPY` after install** (same tree; `lib/` added by you):
 
 ```text
-CIRCUITPY/   (or KINGSHASH if boot.py relabeled / hid USB)
+CIRCUITPY/   (or KINGSHASH)
 ├── boot.py
 ├── code.py
 ├── network.conf
