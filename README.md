@@ -40,8 +40,9 @@ The KingPicoDucky acts as an isolated Access Point. You connect to it with your 
 ## ✨ Core Features & Design
 
 * **Premium "Glassmorphism" UI**: A state-of-the-art, dark-mode, completely offline web interface that looks incredibly futuristic and sleek.
+* **Global Speed Slider**: Effortlessly switch from "Slow" to "Absolute Boost" typing arrays mathematically via a seamless UI slider. It intelligently calculates logical floor values rather than hard zeroes, ensuring the host machine handles maximum execution speeds stably!
 * **Chunked "Ghost Feeder"**: The browser splits endless payload streams perfectly; you can stop and pause the feed at any time cooperatively without yanking the USB cord.
-* **Smart Timing**: Wait variables explicitly for `Init`, `TAB`, `ENTER`, and general keys.
+* **Standalone Anti-Sleep Jiggler**: An independent hardware-level utility to keep target machines awake with zero drift movement, decoupled completely from active payload feeding!
 * **Live Progress**: An activity log prints out the chunks and real-time execution speeds.
 
 ---
@@ -56,7 +57,7 @@ Corporate environments now leverage advanced AI to detect "Anomalous Peripherals
    * **40-100ms** after spaces and tabs.
    * **150-400ms** longer pauses simulating human thought after punctuation and newlines.
    * **5% chance** to randomly pause and simulate a brief 'stumbling' hesitate.
-* **Lack of Correlated Input**: EDRs look for keyboards that type thousands of characters with absolutely zero mouse movement. In Humanize Mode, KingPicoDucky leverages the `adafruit_hid.mouse` library to **automatically jiggle the mouse** slightly (+/- 2 pixels) at random intervals, fulfilling the "correlated input" security requirement perfectly!
+* **Lack of Correlated Input**: EDRs look for keyboards that type thousands of characters with absolutely zero mouse movement. In Humanize Mode, KingPicoDucky leverages the `adafruit_hid.mouse` library to **automatically jiggle the mouse** slightly at random intervals, fulfilling the "correlated input" security requirement perfectly! You can heavily configure the probability and bounding box in the UI, and the board uses a **drift-free physics engine** that mathematically recoils every movement pixel-for-pixel so the cursor never vanishes during long runs.
 
 ---
 
@@ -90,7 +91,7 @@ CircuitPython needs the USB and Web Server add-ons.
 ### Step 4: Configure the Wi-Fi
 Open `network.conf` and update the credentials for the network the Pico will *broadcast*:
 ```ini
-ssid="KingPicoDucky"
+ssid="PicoDuckyNet"
 password="Password123"
 ip="192.168.4.1"
 ```
@@ -116,10 +117,13 @@ Save, and reset the Pico (unplug and re-plug it).
 Included inside `boot.py` is logic to hide the USB mass-storage drive entirely from the target computer. If you have a physical switch wired between **GP17** and Ground, and the switch is OPEN, the `CIRCUITPY` drive will disappear, leaving only the "Dell Keyboard" registered. The drive will also optionally mount under the generic name `KINGSHASH` for further disguise.
 
 ### Field Delays Explained
-- **Init wait**: Gives you `X` milliseconds *after* hitting execute on your phone to lean over to the Target PC and click on the specific text field/Excel cell you want the typing to start in. Minimum 2000ms recommended!
-- **Tab/Enter wait**: Give the Target OS a chance to move to the next form cell or spreadsheet row before printing the next character! Set to 500ms if target OS is laggy.
-- **Key delay**: Standard wait between strings of types.
+- **Start Countdown (formerly Init wait)**: Gives you `X` milliseconds *after* hitting execute on your phone to lean over to the Target PC and click on the specific text field/Excel cell you want the typing to start in. Minimum 2000ms recommended!
+- **Global Speed Slider**: Slide it all the way to 100% to hit **Absolute Boost**. The values dynamically drop to bare minimums (Tab/Row `50ms`, Key `10ms`). You can granularly bump any variable if the host OS acts sluggish.
+- **Standalone Mouse Jiggler**: Switch on at the very top of the UI. Configures an untraceable, completely decoupled pulse of movement (e.g. 10 seconds default) to continuously reset screen-sleep timers.
+
+### Stealth Evasion Tuners
 - **Humanize Typing**: Dramatically increases execution time by printing char-by-char with varying gaussian-like logic, but ensures extreme EDR stealth.
+- **Jiggle Frequency / Pixels**: When toggling Humanize, tweak exactly how frequently and how far the fake mouse jumps during the typing sequence. Automatically drift-stabilized!
 
 ---
 
@@ -129,7 +133,8 @@ If you want to build automated tools to interact with your PicoDucky, here are t
 
 | Method | Path | Purpose |
 |--------|------|---------|
-| `POST` | `/execute` | Run one chunk (`{"content": "LINE\nLINE...", "humanize": false}`). |
+| `POST` | `/execute` | Run one chunk (`{"content": "LINE\nLINE...", "humanize": false, "hz_freq": 0.15, "hz_px": 2}`). |
+| `POST` | `/jiggler` | Configures and toggles the standalone mouse jiggler (`{"enabled": true, "distance": 10, "interval": 10}`). |
 | `POST` | `/stop` | Request cooperative abort of current run. |
 | `GET` | `/status` | Returns JSON status: `busy`, `abort`. |
 | `GET` | `/` | Web UI assets. |
