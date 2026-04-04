@@ -90,7 +90,7 @@ CircuitPython needs the USB and Web Server add-ons.
 ### Step 4: Configure the Wi-Fi
 Open `network.conf` and update the credentials for the network the Pico will *broadcast*:
 ```ini
-ssid="PicoDuckyNet"
+ssid="KingPicoDucky"
 password="Password123"
 ip="192.168.4.1"
 ```
