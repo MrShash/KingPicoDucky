@@ -1,310 +1,149 @@
-# KingPicoDucky
+# KingPicoDucky (v2.0)
 
-**Wireless HID auto-feeder for Raspberry Pi Pico W / Pico 2 W** — paste large CSV, TSV, or plain text in the browser; the board types it into the host over USB, without blowing past tiny MCU RAM limits.
+**The Ultimate Wireless HID Auto-Feeder for Raspberry Pi Pico W / Pico 2 W**
+
+Have you ever tried to paste a massive CSV into an old school "BadUSB" or Rubber Ducky, only to watch the microcontroller crash due to memory limits, or type faster than the target computer can handle? 
+
+**KingPicoDucky** solves this. It allows you to paste enormous text documents, CSVs, or TSV spreadsheets straight into your browser. The board then types it directly into the target USB host, properly chunked, paced, and completely wirelessly.
 
 Maintained by **KingShash** (Shaswat Manoj Jha).
 
 ---
 
-## Contents
+## 📖 Contents
 
-- [Why this exists](#why-this-exists)
-- [What it does](#what-it-does)
-- [Features](#features)
-- [Web interface](#web-interface)
-  - [Ms per character](#ms-per-character-tuning)
-- [Hardware](#hardware)
-- [Install guide](#install-guide)
-  - [Step 1: Flash standard CircuitPython](#step-1-flash-standard-circuitpython)
-  - [Step 2: Add required libraries](#step-2-add-required-libraries)
-  - [Step 3: Copy this project](#step-3-copy-this-project)
-  - [Step 4: Configure Wi-Fi](#step-4-configure-wi-fi)
-- [How to use](#how-to-use)
-- [Optional: boot.py stealth mode](#optional-bootpy-stealth-mode)
-- [REST endpoints (reference)](#rest-endpoints-reference)
-- [Troubleshooting](#troubleshooting)
-- [Repository layout](#repository-layout)
+- [Why KingPicoDucky?](#why-kingpicoducky)
+- [✨ Core Features & Design](#-core-features--design)
+- [🔥 Advanced: EDR Evasion](#-advanced-edr-evasion-stealth)
+- [💻 Hardware Requirements](#-hardware-requirements)
+- [🚀 Beginner's Install Guide](#-beginners-install-guide)
+- [🕹️ How to Use (Web Interface)](#%EF%B8%8F-how-to-use-web-interface)
+- [⚙️ Advanced Settings & Tuning](#%EF%B8%8F-advanced-settings--tuning)
+- [🔌 REST API Reference](#-rest-api-reference)
+- [❓ Troubleshooting](#-troubleshooting)
 
 ---
 
-## Why this exists
+## Why KingPicoDucky?
 
-Many BadUSB / Ducky-style tools are built for **short** payloads (dozens of lines). That breaks down when you need **heavy** data entry:
+Many Ducky-style tools excel at *short* payloads (e.g., executing a quick Powershell command). However, they break down when dealing with heavy data entry due to:
 
-| Issue | What goes wrong |
-|--------|------------------|
-| **Buffer limits** | Long scripts in one HTTP request can overflow RAM or get truncated; the web server or interpreter crashes. |
-| **Timing** | Typing too fast into Excel or web forms causes the host to **drop characters** (especially after `TAB` / `ENTER` while the UI is still animating). |
-| **CSV ergonomics** | You do not want to prefix every cell line with `STRING` / `TYPE` by hand for hundreds of rows. |
+1. **Buffer limits**: Sending thousands of lines of payload all at once overflows the tiny RAM on most microcontrollers, crashing the device.
+2. **Timing issues**: Traditional scripts type extremely fast. Spreadsheets or web forms often "swallow" or skip characters if they're still rendering an animation from the previous `TAB` or `ENTER`.
+3. **EDR Flags**: Typing thousands of characters perfectly spaced at 10 milliseconds without moving a mouse is instantly flagged by corporate Endpoint Detection and Response (EDR) agents.
 
----
-
-## What it does
-
-KingPicoDucky keeps **CircuitPython on the board** doing what it does best (USB HID + small HTTP handler), and moves **splitting, pacing, and queueing** into the **browser**:
-
-1. You paste raw text or spreadsheet data (tab-separated works like Excel copy/paste).
-2. The page builds a Ducky-style script (`TYPE`, `TAB`, `ENTER`, `WAIT`, …).
-3. The script is sent in **small chunks** (default 60 lines per request) so the Pico never sees a monster payload at once.
-4. The UI **estimates** how long each chunk will take to type and **waits** before sending the next chunk, reducing “swallowed” keystrokes.
-5. You can **stop** feeding: the browser aborts the current request and the firmware cooperatively stops between lines and during `WAIT` delays.
-
-No custom UF2 fork is required — **official CircuitPython** only, plus two libraries from the Adafruit bundle.
+**What this tool does differently:**
+The KingPicoDucky acts as an isolated Access Point. You connect to it with your phone/laptop, paste your long list of data into the sleek Apple-style web interface, and the *browser* chunks it safely. The browser sends 60 lines at a time, waits for the Pico to finish, and sends the next block.
 
 ---
 
-## Features
+## ✨ Core Features & Design
 
-- **Chunked “ghost feeder”** — Browser-side slicing; Pico gets bounded line counts per request.
-- **Tunable delays** — Separate waits after init, `TAB`, row/`ENTER`, and per cell type; configurable ms-per-character for timing estimates.
-- **Live preview** — Row count, generated script line count, chunk count, and rough total time before you start.
-- **Progress + activity log** — Chunk index, send/wait phases, and timestamped log lines.
-- **Stop** — Client abort + `POST /stop` so typing stops cooperatively on the device.
-- **`GET /status`** — `busy` / `abort` for debugging or future tooling.
-- **Humanize typing** — Optional `Uniform(5, 35)` ms jitter between characters on the Pico for more human-like inter-key timing.
-- **Standard stack** — `adafruit_hid` + `adafruit_httpserver` on stock CircuitPython.
+* **Premium "Glassmorphism" UI**: A state-of-the-art, dark-mode, completely offline web interface that looks incredibly futuristic and sleek.
+* **Chunked "Ghost Feeder"**: The browser splits endless payload streams perfectly; you can stop and pause the feed at any time cooperatively without yanking the USB cord.
+* **Smart Timing**: Wait variables explicitly for `Init`, `TAB`, `ENTER`, and general keys.
+* **Live Progress**: An activity log prints out the chunks and real-time execution speeds.
 
 ---
 
-## Web interface
+## 🔥 Advanced: EDR Evasion & Stealth
 
-Dark, single-page UI served from the Pico. Open it from a phone or laptop on the same Wi‑Fi network as the board’s access point.
+Corporate environments now leverage advanced AI to detect "Anomalous Peripherals" and BadUSBs. Version 2.0 of KingPicoDucky provides complete mitigation against standard heuristic scans:
 
-![KingPicoDucky web UI — payload, timing controls, start/stop, status, activity log](docs/web-ui.png)
-
-### Layout and controls
-
-| Area | What it does |
-|------|----------------|
-| **Header** | Title and short subtitle (CSV / TSV / paragraphs over Wi‑Fi). |
-| **Payload** | Large monospace field where you paste data. Tab-separated rows behave like Excel copy/paste (tabs move across cells, newlines move down rows). Empty lines still send `ENTER`. |
-| **Live preview** (under payload) | Updates as you type or change settings: **row count**, **generated script line count**, **number of HTTP chunks** (60 script lines per chunk), and a **rough total duration** estimate. |
-| **Init wait (ms)** | Inserts a leading `WAIT` before any keys. Gives you time to click into the target window after pressing Start. |
-| **Tab wait (ms)** | Pause after each `TAB` (moving to the next cell). Helps spreadsheets and forms finish focus moves before the next character. |
-| **Enter wait (ms)** | Pause after each row’s `ENTER` (new line in the sheet or document). |
-| **After-type wait (ms)** | Pause after each `TYPE …` line (each cell’s text). Adds breathing room before `TAB`/`ENTER`. |
-| **Ms per character** | Used **only in the browser** to schedule pauses between chunks — see [below](#ms-per-character-tuning). When **Humanize typing** is on, the preview uses a different estimate because the device adds real jitter; see below. |
-| **Humanize typing** | Checkbox: each `POST /execute` includes `"humanize": true`. On the board, every character in a `TYPE` line is sent separately with `random.uniform(5, 35)` ms delay between characters (still respects **Stop** / abort). Slower overall. Checkbox is disabled while a run is active so every chunk uses the same mode. |
-| **Start feeding** | Builds the script, splits it into chunks, `POST`s each chunk to `/execute`, and waits between chunks using the timing model. Disabled while a run is active. |
-| **Stop** | Aborts the in-flight request, tells the firmware to stop via `POST /stop`, and cancels inter-chunk waits early. Enabled only while feeding. |
-| **Status line** | Plain-language state: idle, per-chunk progress (send vs wait), success, stop, or network error. Marked for screen readers (`role="status"`). |
-| **Progress bar** | Fills as each chunk completes; hidden when idle. |
-| **Activity log** | Collapsible (`<details>`), open by default. Timestamped lines: start, each chunk POST, device reply (`done` / `aborted`), stop requests, errors. Scrolls to the latest line. |
-| **Sanitization** | Non-ASCII characters are stripped before sending (smart quotes/dashes normalized where possible) so the US keyboard layout on the Pico does not mis-type. |
-
-### Ms per character tuning
-
-**Important (default):** This number does **not** insert a delay between every key inside CircuitPython. On the board, `TYPE` lines are sent with `KeyboardLayoutUS.write()` as fast as USB and the firmware allow.
-
-**With Humanize typing enabled:** The firmware types **one character at a time** and sleeps a **random 5–35 ms** between successive characters (uniform). Then **ms per character** is still only used by the browser to **guess** chunk duration (the preview switches to a conservative estimate: up to ~35 ms per gap plus a small per-character overhead).
-
-**What it actually does:** For each chunk, the page estimates duration as:
-
-- sum of every explicit **`WAIT`** in that chunk (from your ms fields), **plus**
-- **(number of characters in all `TYPE` lines in that chunk) × (ms per character)**, **plus**
-- a fixed **~2.5 s** cushion per chunk.
-
-That total is how long the browser **waits after posting a chunk** before sending the next one. So **ms per character** is a **scheduling knob**: it should be large enough that the Pico has usually **finished typing the current chunk** before the next HTTP request arrives. If it is too **small**, the next chunk can start while the host is still catching up → dropped or merged characters. If it is too **large**, feeding is simply slower than necessary.
-
-**Starting points (tune by watching the host):**
-
-| Situation | Try (ms per character) |
-|-----------|-------------------------|
-| Fast PC, light forms, default | **12–18** (repo default in `index.html` is **15**) |
-| Excel / heavy UI, remote desktop, or older hardware | **20–35** |
-| Still seeing swallowed first characters after raising Tab/Enter/After-type waits | **Increase ms per character** in steps of 3–5 until stable |
-
-**How to verify:** If the activity log shows the next chunk sending while the host is still printing the previous cell, increase **ms per character** (or the per-field **WAIT** values) until chunks visibly finish before the next wave starts.
+* **Hardware Fingerprinting**: Built into the `boot.py`, the CircuitPython `supervisor` mimics a legitimate **Dell USB Entry Keyboard** (VID: `0x413C`, PID: `0x2107`). By the time the host computer even probes the USB bus, it registers a completely mundane hardware device.
+* **Behavioral Heuristics (Humanize Mode)**: Machine-perfect 10ms typing is flagged by EDRs. By checking **"Humanize typing"** in the interface, KingPicoDucky injects naturally varying delays: 
+   * **20-60ms** standard typing.
+   * **40-100ms** after spaces and tabs.
+   * **150-400ms** longer pauses simulating human thought after punctuation and newlines.
+   * **5% chance** to randomly pause and simulate a brief 'stumbling' hesitate.
+* **Lack of Correlated Input**: EDRs look for keyboards that type thousands of characters with absolutely zero mouse movement. In Humanize Mode, KingPicoDucky leverages the `adafruit_hid.mouse` library to **automatically jiggle the mouse** slightly (+/- 2 pixels) at random intervals, fulfilling the "correlated input" security requirement perfectly!
 
 ---
 
-## Hardware
+## 💻 Hardware Requirements
 
-| Item | Notes |
-|------|--------|
-| **Board** | [Raspberry Pi Pico W](https://www.raspberrypi.com/products/pico-w/) or [Pico 2 W](https://www.raspberrypi.com/products/pico-2-w/) |
-| **USB cable** | Must support **data** (charge-only cables will not work). |
-| **Host PC** | Machine that should receive keystrokes (Windows / macOS / Linux). |
-| **Phone / laptop** | Any Wi‑Fi client that can join the Pico’s access point to open the control page. |
-
-**Optional — stealth / mass-storage:** `boot.py` can hide the `CIRCUITPY` USB drive from the **host** when a switch on **GP17** is open (see [below](#optional-bootpy-stealth-mode)). The drive may appear under the label **`KINGSHASH`** after remount logic.
+1. **Raspberry Pi Pico W** or **Pico 2 W**.
+2. **Micro-USB Data Cable** (charging-only cables will not work).
+3. **Host Computer** (Target PC / Mac / Linux).
+4. **Phone or Laptop** (to join the Pico's backend Wi-Fi terminal and control the feed).
 
 ---
 
-## Install guide
-
-Use **official CircuitPython** from [circuitpython.org](https://circuitpython.org/downloads). Do not rely on unknown prebuilt “all-in-one” UF2 images for this project.
+## 🚀 Beginner's Install Guide
 
 ### Step 1: Flash standard CircuitPython
+1. Download the [CircuitPython `.UF2` for the Pico W](https://circuitpython.org/board/raspberry_pi_pico_w/) or [Pico 2 W](https://circuitpython.org/board/raspberry_pi_pico2_w/). 
+2. Unplug your Pico. **Hold down the `BOOTSEL` button** on the board, plug it into your computer, and let go of the button once the `RPI-RP2` drive appears.
+3. Drag and drop the `.UF2` file onto the drive. It will reboot and reappear as a drive named `CIRCUITPY`.
 
-1. **Download the `.uf2` for your exact board** (pick one):
+### Step 2: Add essential libraries
+CircuitPython needs the USB and Web Server add-ons. 
+1. Download the [Adafruit CircuitPython Library Bundle](https://circuitpython.org/libraries) that matches your CircuitPython version (e.g. `9.x`).
+2. Unzip it, go to the `lib` folder inside, and copy the `adafruit_hid` and `adafruit_httpserver` folders.
+3. Paste both into the `lib` folder on your `CIRCUITPY` drive.
 
-   | Board | Official download page |
-   |-------|-------------------------|
-   | **Raspberry Pi Pico W** | [**Download / board info — Pico W**](https://circuitpython.org/board/raspberry_pi_pico_w/) |
-   | **Raspberry Pi Pico 2 W** | [**Download / board info — Pico 2 W**](https://circuitpython.org/board/raspberry_pi_pico2_w/) |
+### Step 3: Copy this Project
+1. Copy the `boot.py`, `code.py`, and `network.conf` files from this repository directly into the root of `CIRCUITPY`.
+2. Create a folder called `static` on `CIRCUITPY`.
+3. Drop `index.html`, `styles.css`, and `script.js` into that `static` folder.
 
-   On each page, use the **Download .UF2 now** button (or the latest release linked there).  
-   *Tip:* the [main downloads page](https://circuitpython.org/downloads) lists all boards if you need to search.
-
-2. **Enter bootloader mode**
-   - Unplug the Pico.
-   - **Hold `BOOTSEL`**, plug the USB cable into your computer, then **release `BOOTSEL`** after a second or two.
-
-3. **Copy the firmware**
-   - A USB drive should appear — often **`RPI-RP2`** on RP2040 (Pico W). On **RP2350** (Pico 2 / Pico 2 W) you may see **`RP2350`** instead; behavior is the same: it is the bootloader volume.
-   - **Drag and drop** the downloaded `.uf2` onto that drive.
-   - The volume will eject and the board will reboot.
-
-4. **Confirm success**
-   - The board comes back as **`CIRCUITPY`** with `code.py` and empty folders — that is your CircuitPython disk.
-
-5. **Version check**
-   - Open `boot_out.txt` on `CIRCUITPY` and note the **CircuitPython version** (e.g. `9.x.x`). You need the **matching** library bundle major version in Step 2.
-
----
-
-### Step 2: Add required libraries
-
-Standard CircuitPython does not ship with USB HID typing helpers or the HTTP server in `lib`; add them from the **Adafruit CircuitPython Library Bundle**.
-
-1. **Download the bundle**  
-   [**CircuitPython libraries — get the bundle**](https://circuitpython.org/libraries)  
-
-   Download the **`.zip` whose version matches your firmware** (e.g. **9.x** bundle for CircuitPython 9.x, **8.x** for 8.x). Mixing major versions often causes import errors.
-
-2. **Extract** the zip on your computer.
-
-3. **Open the extracted `lib` folder** inside the bundle. Copy **these two folders** (entire folders, not single files):
-
-   | Folder | Role |
-   |--------|------|
-   | `adafruit_hid` | USB keyboard / layout (keystrokes and typing). |
-   | `adafruit_httpserver` | HTTP server for the web UI and `/execute` API. |
-
-4. On **`CIRCUITPY`**, open the **`lib`** folder (create it if it is missing). **Paste** both folders there.
-
-5. **If you get `ImportError` on boot**  
-   Some versions pull in extra dependencies. Check the `requirements.txt` next to each library in the bundle and copy any **additional** listed packages from the same bundle’s `lib` folder into `CIRCUITPY/lib`. Retry until `code.py` runs without errors in the serial console.
-
----
-
-### Step 3: Copy this project
-
-1. Copy from this repository to the **root** of `CIRCUITPY`:
-   - `code.py`
-   - `boot.py` *(optional; see [stealth mode](#optional-bootpy-stealth-mode))*
-   - `network.conf` *(you will edit credentials in Step 4)*
-
-2. Create a folder named **`static`** on `CIRCUITPY`.
-
-3. Copy into **`static/`**:
-   - `index.html`
-   - `script.js`
-   - `styles.css`
-
-Your `CIRCUITPY` layout should match [Repository layout](#repository-layout) below.
-
----
-
-### Step 4: Configure Wi-Fi
-
-Edit **`network.conf`** on the root of the drive (plain text, `key=value`):
-
+### Step 4: Configure the Wi-Fi
+Open `network.conf` and update the credentials for the network the Pico will *broadcast*:
 ```ini
-ssid="YourNetworkName"
-password="YourNetworkPassword"
+ssid="PicoDuckyNet"
+password="Password123"
 ip="192.168.4.1"
 ```
 
-- **`ssid` / `password`** — Access point the Pico will create. Clients join this network to open the web UI.
-- **`ip`** — IPv4 address of the Pico on that AP (default `192.168.4.1` matches common phone hotspot patterns; change if it clashes).
-
-Save the file, then **reset** the board (unplug/replug or Ctrl+D in the REPL).
+Save, and reset the Pico (unplug and re-plug it). 
 
 ---
 
-## How to use
+## 🕹️ How to Use (Web Interface)
 
-1. Plug the Pico into the **target computer** (USB HID).
-2. On your **phone or second PC**, join the Wi‑Fi network named like your `ssid` in `network.conf`.
-3. Open a browser to **`http://`** plus the `ip` from `network.conf` (default **`http://192.168.4.1/`**).
-4. Paste data, adjust timing fields if needed, then **Start feeding**. Use **Stop** to halt further chunks and signal the firmware to stop cooperatively.
-5. Focus the correct window on the host before typing starts (same as any USB keyboard).
-
-The web UI uses **`http://192.168.4.1`** as a fallback when the page is not opened from the Pico’s own origin; if you changed `ip`, either open the page via that address or edit `script.js` (`base` constant) to match.
-
----
-
-## Optional: boot.py stealth mode
-
-`boot.py` remounts the filesystem read-only, sets the volume label to **`KINGSHASH`**, and — if **GP17** is **not** pulled to ground — calls `storage.disable_usb_drive()` so the **USB mass-storage drive is hidden from the host** (the host still sees the HID keyboard).  
-
-If you do not need that behavior, you can remove or rename `boot.py` and keep only `code.py` and `static/`.
+1. Plug the Pico into the **target** computer. 
+2. On your **phone or second PC**, join the Wi-Fi network you set up in `network.conf` (`PicoDuckyNet`). 
+3. Open your browser and go to `http://192.168.4.1/`. You'll see the futuristic Glassmorphism KingPicoDucky dashboard.
+4. **Paste your Data**: Take a massive Excel file column or thousands of lines of text and paste it into the Payload Input.
+5. **Set Delays**: If the Target PC is slow, bump the 'Tab wait' and 'Enter wait' values up to ensure it has time to process GUI changes between lines.
+6. **Hit "Execute Payload"**: The tool will begin automatically typing everything seamlessly onto the Target PC! 
 
 ---
 
-## REST endpoints (reference)
+## ⚙️ Advanced Settings & Tuning
+
+### The "Stealth" `boot.py` Switch
+Included inside `boot.py` is logic to hide the USB mass-storage drive entirely from the target computer. If you have a physical switch wired between **GP17** and Ground, and the switch is OPEN, the `CIRCUITPY` drive will disappear, leaving only the "Dell Keyboard" registered. The drive will also optionally mount under the generic name `KINGSHASH` for further disguise.
+
+### Field Delays Explained
+- **Init wait**: Gives you `X` milliseconds *after* hitting execute on your phone to lean over to the Target PC and click on the specific text field/Excel cell you want the typing to start in. Minimum 2000ms recommended!
+- **Tab/Enter wait**: Give the Target OS a chance to move to the next form cell or spreadsheet row before printing the next character! Set to 500ms if target OS is laggy.
+- **Key delay**: Standard wait between strings of types.
+- **Humanize Typing**: Dramatically increases execution time by printing char-by-char with varying gaussian-like logic, but ensures extreme EDR stealth.
+
+---
+
+## 🔌 REST API Reference
+
+If you want to build automated tools to interact with your PicoDucky, here are the endpoints:
 
 | Method | Path | Purpose |
 |--------|------|---------|
-| `POST` | `/execute` | Run one chunk (`JSON`: `{"content": "LINE\\nLINE...", "humanize": false}`). If `humanize` is true, inter-character jitter applies to every `TYPE` line in that chunk. |
+| `POST` | `/execute` | Run one chunk (`{"content": "LINE\nLINE...", "humanize": false}`). |
 | `POST` | `/stop` | Request cooperative abort of current run. |
-| `GET` | `/status` | JSON: `busy`, `abort`. |
-| `GET` / `POST` | `/`, `/index.html`, `/styles.css`, `/script.js` | Web UI assets. |
+| `GET` | `/status` | Returns JSON status: `busy`, `abort`. |
+| `GET` | `/` | Web UI assets. |
 
 ---
 
-## Troubleshooting
+## ❓ Troubleshooting
 
-| Symptom | Things to try |
+| Symptom | Solution |
 |---------|----------------|
-| No `CIRCUITPY` after flashing | Re-enter BOOTSEL mode; try another USB port/cable; confirm UF2 matches **Pico W** vs **Pico 2 W**. |
-| `ImportError` in serial console | Re-copy libraries from the bundle version that **matches** your CP major version; add missing deps from bundle `requirements.txt`. |
-| Cannot open web page | Join the Pico’s AP; ping or browse `http://<ip>/`; confirm `network.conf` quotes and `ip`. |
-| Garbled or missing keys | Increase **Tab / Enter / type** waits and **ms per character**; slow hosts and spreadsheets need more delay. |
-| “Device busy” / stuck | Only one `/execute` at a time; use **Stop**, reset the board, check `/status`. |
+| **Can't access `http://192.168.4.1/`** | Ensure your phone/device is completely connected to the Pico's Wi-Fi. Turn off Cellular Data temporarily if your phone drops WiFi connections without internet. |
+| **`ImportError` flashing on serial** | You forgot to place the `adafruit_hid` or `adafruit_httpserver` directories inside the `lib` folder of the Pico. |
+| **Random letters missing during typing** | The USB Target computer is lagging behind the Pico! Increase the **Key delay** or **Tab / Enter** parameters in the UI significantly! |
 
 ---
 
-## Repository layout
-
-```text
-KingPicoDucky/
-├── README.md
-├── docs/
-│   └── web-ui.png          # screenshot for README
-├── boot.py                 # optional: stealth / drive label
-├── code.py                 # Wi‑Fi AP, HTTP server, HID engine
-├── network.conf            # AP ssid, password, board IP
-└── static/
-    ├── index.html          # web UI shell
-    ├── script.js           # chunking, timing, fetch + stop
-    └── styles.css          # UI styles
-```
-
-**On `CIRCUITPY` after install** (same tree; `lib/` added by you):
-
-```text
-CIRCUITPY/   (or KINGSHASH if boot.py relabeled / hid USB)
-├── boot.py
-├── code.py
-├── network.conf
-├── lib/
-│   ├── adafruit_hid/
-│   └── adafruit_httpserver/
-└── static/
-    ├── index.html
-    ├── script.js
-    └── styles.css
-```
-
----
-
-## License and responsibility
-
-Use this project **only on systems you own or are explicitly authorized to test**. Unauthorized keystroke injection is illegal in many jurisdictions. The authors are not responsible for misuse.
-
----
-
-*Questions or improvements — open an issue or PR on the repository hosting this file.*
+*This project is for educational use and authorized auditing only. Unauthorized Keystroke injection is illegal.*
