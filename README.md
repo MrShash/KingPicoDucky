@@ -1,6 +1,7 @@
 # KingPicoDucky (v2.0)
 
 **The Ultimate Wireless HID Auto-Feeder for Raspberry Pi Pico W / Pico 2 W**
+with integrated Mouse Jiggler.
 
 Have you ever tried to paste a massive CSV into an old school "BadUSB" or Rubber Ducky, only to watch the microcontroller crash due to memory limits, or type faster than the target computer can handle? 
 
