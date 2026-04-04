@@ -61,6 +61,7 @@ No custom UF2 fork is required — **official CircuitPython** only, plus two lib
 - **Progress + activity log** — Chunk index, send/wait phases, and timestamped log lines.
 - **Stop** — Client abort + `POST /stop` so typing stops cooperatively on the device.
 - **`GET /status`** — `busy` / `abort` for debugging or future tooling.
+- **Humanize typing** — Optional `Uniform(5, 35)` ms jitter between characters on the Pico for more human-like inter-key timing.
 - **Standard stack** — `adafruit_hid` + `adafruit_httpserver` on stock CircuitPython.
 
 ---
@@ -82,7 +83,8 @@ Dark, single-page UI served from the Pico. Open it from a phone or laptop on the
 | **Tab wait (ms)** | Pause after each `TAB` (moving to the next cell). Helps spreadsheets and forms finish focus moves before the next character. |
 | **Enter wait (ms)** | Pause after each row’s `ENTER` (new line in the sheet or document). |
 | **After-type wait (ms)** | Pause after each `TYPE …` line (each cell’s text). Adds breathing room before `TAB`/`ENTER`. |
-| **Ms per character** | Used **only in the browser** to schedule pauses between chunks — see [below](#ms-per-character-tuning). |
+| **Ms per character** | Used **only in the browser** to schedule pauses between chunks — see [below](#ms-per-character-tuning). When **Humanize typing** is on, the preview uses a different estimate because the device adds real jitter; see below. |
+| **Humanize typing** | Checkbox: each `POST /execute` includes `"humanize": true`. On the board, every character in a `TYPE` line is sent separately with `random.uniform(5, 35)` ms delay between characters (still respects **Stop** / abort). Slower overall. Checkbox is disabled while a run is active so every chunk uses the same mode. |
 | **Start feeding** | Builds the script, splits it into chunks, `POST`s each chunk to `/execute`, and waits between chunks using the timing model. Disabled while a run is active. |
 | **Stop** | Aborts the in-flight request, tells the firmware to stop via `POST /stop`, and cancels inter-chunk waits early. Enabled only while feeding. |
 | **Status line** | Plain-language state: idle, per-chunk progress (send vs wait), success, stop, or network error. Marked for screen readers (`role="status"`). |
@@ -92,7 +94,9 @@ Dark, single-page UI served from the Pico. Open it from a phone or laptop on the
 
 ### Ms per character tuning
 
-**Important:** This number does **not** insert a delay between every key inside CircuitPython. On the board, `TYPE` lines are sent with `KeyboardLayoutUS.write()` as fast as USB and the firmware allow.
+**Important (default):** This number does **not** insert a delay between every key inside CircuitPython. On the board, `TYPE` lines are sent with `KeyboardLayoutUS.write()` as fast as USB and the firmware allow.
+
+**With Humanize typing enabled:** The firmware types **one character at a time** and sleeps a **random 5–35 ms** between successive characters (uniform). Then **ms per character** is still only used by the browser to **guess** chunk duration (the preview switches to a conservative estimate: up to ~35 ms per gap plus a small per-character overhead).
 
 **What it actually does:** For each chunk, the page estimates duration as:
 
@@ -244,7 +248,7 @@ If you do not need that behavior, you can remove or rename `boot.py` and keep on
 
 | Method | Path | Purpose |
 |--------|------|---------|
-| `POST` | `/execute` | Run one chunk of script (`JSON`: `{"content": "LINE\\nLINE..."}`). |
+| `POST` | `/execute` | Run one chunk (`JSON`: `{"content": "LINE\\nLINE...", "humanize": false}`). If `humanize` is true, inter-character jitter applies to every `TYPE` line in that chunk. |
 | `POST` | `/stop` | Request cooperative abort of current run. |
 | `GET` | `/status` | JSON: `busy`, `abort`. |
 | `GET` / `POST` | `/`, `/index.html`, `/styles.css`, `/script.js` | Web UI assets. |
@@ -282,7 +286,7 @@ KingPicoDucky/
 **On `CIRCUITPY` after install** (same tree; `lib/` added by you):
 
 ```text
-CIRCUITPY/   (or KINGSHASH)
+CIRCUITPY/   (or KINGSHASH if boot.py relabeled / hid USB)
 ├── boot.py
 ├── code.py
 ├── network.conf

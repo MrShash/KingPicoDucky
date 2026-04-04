@@ -1,5 +1,6 @@
 import wifi
 import time
+import random
 import usb_hid
 import socketpool
 from adafruit_hid.keycode import Keycode
@@ -76,6 +77,16 @@ def wait_ms(ms):
 
 feed_abort = False
 busy = False
+humanize_type = False
+
+def type_jitter(s):
+    n = len(s)
+    for i in range(n):
+        if feed_abort:
+            return
+        layout.write(s[i])
+        if i + 1 < n:
+            wait_ms(random.uniform(5, 35))
 
 def genHID(script):
     i, n = 0, len(script)
@@ -114,21 +125,27 @@ def genHID(script):
             elif ln.startswith("TYPE"):
                 if feed_abort:
                     return
-                layout.write(ln.split(" ", 1)[1])
+                t = ln.split(" ", 1)[1]
+                if humanize_type:
+                    type_jitter(t)
+                else:
+                    layout.write(t)
             else:
                 press(cvt(ln))
         i += 1
 
-def runHID(script):
-    global busy, feed_abort
+def runHID(script, hz=False):
+    global busy, feed_abort, humanize_type
     if busy:
         return "busy"
     busy = True
     feed_abort = False
+    humanize_type = hz
     try:
         genHID(script)
     finally:
         busy = False
+        humanize_type = False
     st = "aborted" if feed_abort else "done"
     print(st)
     return st
@@ -166,10 +183,16 @@ def r_stat(request):
 @server.route("/execute", POST, append_slash=True)
 def r_exe(request):
     try:
-        raw = (request.json() or {}).get("content", "")
+        j = request.json() or {}
+        raw = j.get("content", "")
+        hz = j.get("humanize", False)
+        if isinstance(hz, str):
+            hz = hz.lower() in ("1", "true", "yes")
+        elif not isinstance(hz, bool):
+            hz = bool(hz)
         if not isinstance(raw, str):
             return JSONResponse(request, {"message": "bad format"}, status_code=400)
-        st = runHID(raw.splitlines())
+        st = runHID(raw.splitlines(), hz)
         if st == "busy":
             return JSONResponse(request, {"message": "busy"}, status_code=429)
         return JSONResponse(request, {"message": st})

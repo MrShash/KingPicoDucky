@@ -25,12 +25,16 @@ return s;
 }
 
 function chunkMs(chunk){
-let ms=0,sp=+$('charSpeed').value||15;
+let ms=0,sp=+$('charSpeed').value||15,hm=$('humanize').checked;
 for(const ln of chunk){
 if(ln.startsWith('WAIT')){
 const p=ln.split(' ');
 if(p[1]&&!isNaN(+p[1]))ms+=+p[1];
-}else if(ln.startsWith('TYPE'))ms+=(ln.length-5)*sp;
+}else if(ln.startsWith('TYPE')){
+const c=ln.length-5;
+if(hm)ms+=(c>1?(c-1)*35:0)+c*8;
+else ms+=c*sp;
+}
 }
 return ms+2500;
 }
@@ -42,7 +46,7 @@ el.scrollTop=el.scrollHeight;
 }
 
 async function postChunk(lines,signal){
-const r=await fetch(`${base}/execute`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({content:lines.join('\n')}),signal});
+const r=await fetch(`${base}/execute`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({content:lines.join('\n'),humanize:$('humanize').checked}),signal});
 const j=await r.json().catch(()=>({}));
 if(!r.ok)throw new Error(j.message||r.statusText||String(r.status));
 return j.message||'done';
@@ -66,7 +70,7 @@ for(let i=0;i<sc.length;i+=CHUNK)total+=chunkMs(sc.slice(i,i+CHUNK));
 pv.textContent=`${rows} row(s) → ${sc.length} script line(s) → ${n} chunk(s) → ~${(total/1000/60).toFixed(1)} min est.`;
 }
 
-['initWait','tabWait','rowWait','typeWait','charSpeed','payloadData'].forEach(id=>{
+['initWait','tabWait','rowWait','typeWait','charSpeed','payloadData','humanize'].forEach(id=>{
 const el=$(id);
 el.addEventListener(id==='payloadData'?'input':'change',setPreview);
 });
@@ -75,6 +79,7 @@ function uiRun(on){
 feeding=on;
 $('go').disabled=on;
 $('stop').disabled=!on;
+$('humanize').disabled=on;
 $('progBox').hidden=!on;
 if(!on){$('prog').style.width='0%';}
 }
@@ -88,6 +93,7 @@ st.className='stat run';
 st.textContent='Starting…';
 $('log').textContent='';
 logLine('begin');
+if($('humanize').checked)logLine('humanize: 5–35ms jitter between chars on device');
 
 const text=san(raw),full=buildScript(text);
 const chunks=[];
