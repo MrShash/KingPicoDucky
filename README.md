@@ -1,4 +1,4 @@
-# KingPicoDucky (v2.0)
+# KingPicoDucky (v2.3)
 
 **The Ultimate Wireless HID Auto-Feeder for Raspberry Pi Pico W / Pico 2 W**
 
@@ -7,6 +7,8 @@ Have you ever tried to paste a massive CSV into an old school "BadUSB" or Rubber
 **KingPicoDucky** solves this. It allows you to paste enormous text documents, CSVs, or TSV spreadsheets straight into your browser. The board then types it directly into the target USB host, properly chunked, paced, and completely wirelessly.
 
 Maintained by **KingShash** (Shaswat Manoj Jha).
+
+![KingPicoDucky Premium UI Dashboard](docs/main_dashboard.png)
 
 ---
 
@@ -39,11 +41,13 @@ The KingPicoDucky acts as an isolated Access Point. You connect to it with your 
 
 ## ✨ Core Features & Design
 
-* **Premium "Glassmorphism" UI**: A state-of-the-art, dark-mode, completely offline web interface that looks incredibly futuristic and sleek.
-* **Global Speed Slider**: Effortlessly switch from "Slow" to "Absolute Boost" typing arrays mathematically via a seamless UI slider. It intelligently calculates logical floor values rather than hard zeroes, ensuring the host machine handles maximum execution speeds stably!
-* **Chunked "Ghost Feeder"**: The browser splits endless payload streams perfectly; you can stop and pause the feed at any time cooperatively without yanking the USB cord.
-* **Standalone Anti-Sleep Jiggler**: An independent hardware-level utility to keep target machines awake with zero drift movement, decoupled completely from active payload feeding!
-* **Live Progress**: An activity log prints out the chunks and real-time execution speeds.
+* **Premium Cyberpunk Glassmorphism UI**: Dark-mode, animated gradient, frosted glass cards, neon glow — completely offline. No CDN, no internet needed.
+* **Global Speed Slider**: One drag sets all delays simultaneously. Goes from "Slow & Safe" to "Absolute Boost". All fine-tuning fields still editable manually.
+* **Chunked Ghost Feeder**: The browser splits huge payloads into 60-line chunks. Tracks live ETA, chunk progress, and per-chunk timing in a hacker-style terminal output. Stop at any time.
+* **Standalone Anti-Sleep Mouse Jiggler**: Toggle-on to keep the target PC awake independently. Fully configurable distance, interval, and randomization. Runs even when not feeding a payload.
+* **Mouse Jiggler While Typing**: Subtly moves the mouse during typing to evade EDR keyboard-only detection. Configurable jiggle chance per keystroke and max bounding distance.
+
+![Speed Slider and Timing Controls](docs/speed_slider.png)
 
 ---
 
@@ -57,7 +61,9 @@ Corporate environments now leverage advanced AI to detect "Anomalous Peripherals
    * **40-100ms** after spaces and tabs.
    * **150-400ms** longer pauses simulating human thought after punctuation and newlines.
    * **5% chance** to randomly pause and simulate a brief 'stumbling' hesitate.
-* **Lack of Correlated Input**: EDRs look for keyboards that type thousands of characters with absolutely zero mouse movement. In Humanize Mode, KingPicoDucky leverages the `adafruit_hid.mouse` library to **automatically jiggle the mouse** slightly at random intervals, fulfilling the "correlated input" security requirement perfectly! You can heavily configure the probability and bounding box in the UI, and the board uses a **drift-free physics engine** that mathematically recoils every movement pixel-for-pixel so the cursor never vanishes during long runs.
+* **Lack of Correlated Input**: EDRs look for keyboards that type thousands of characters with absolutely zero mouse movement. In **"Mouse Jiggler While Typing"** mode, KingPicoDucky uses the `adafruit_hid.mouse` library to shake the mouse slightly at random intervals, fulfilling the "correlated input" security requirement perfectly. You configure the jiggle *chance per keystroke (%)* and *maximum bounding distance (px)*. The board uses a **drift-free physics engine** — every outward movement is immediately cancelled with an exact negative return, so the cursor never drifts away during long runs.
+
+![EDR Stealth Mode & Mouse Jiggler Config](docs/edr_stealth_config.png)
 
 ---
 
@@ -105,9 +111,15 @@ Save, and reset the Pico (unplug and re-plug it).
 1. Plug the Pico into the **target** computer. 
 2. On your **phone or second PC**, join the Wi-Fi network you set up in `network.conf` (`PicoDuckyNet`). 
 3. Open your browser and go to `http://192.168.4.1/`. You'll see the futuristic Glassmorphism KingPicoDucky dashboard.
-4. **Paste your Data**: Take a massive Excel file column or thousands of lines of text and paste it into the Payload Input.
-5. **Set Delays**: If the Target PC is slow, bump the 'Tab wait' and 'Enter wait' values up to ensure it has time to process GUI changes between lines.
-6. **Hit "Execute Payload"**: The tool will begin automatically typing everything seamlessly onto the Target PC! 
+4. **Optional — Enable Standalone Jiggler**: If you want to keep the target PC awake while you set up, flip the **Standalone Mouse Jiggler** toggle at the top.
+5. **Paste your Data**: Take a massive Excel file column or thousands of lines of text and paste it into the Payload Input.
+6. **Set Speed**: Drag the **Global Typing Speed** slider or manually tune the TAB/ENTER/Key delay fields below it.
+7. **Optionally enable Mouse Jiggler While Typing**: If the target environment uses EDR, turn this on. You can control how often and how far the mouse jiggles.
+8. **Hit "Execute Payload"**: The tool will begin automatically typing everything onto the Target PC. Watch the hacker-style Terminal Output, chunk counter, and live ETA!
+
+![Live Execution — Hacker Terminal Output](docs/live_execution_progress.png)
+
+![Standalone Mouse Jiggler Controls](docs/standalone_jiggler.png)
 
 ---
 
@@ -117,13 +129,21 @@ Save, and reset the Pico (unplug and re-plug it).
 Included inside `boot.py` is logic to hide the USB mass-storage drive entirely from the target computer. If you have a physical switch wired between **GP17** and Ground, and the switch is OPEN, the `CIRCUITPY` drive will disappear, leaving only the "Dell Keyboard" registered. The drive will also optionally mount under the generic name `KINGSHASH` for further disguise.
 
 ### Field Delays Explained
-- **Start Countdown (formerly Init wait)**: Gives you `X` milliseconds *after* hitting execute on your phone to lean over to the Target PC and click on the specific text field/Excel cell you want the typing to start in. Minimum 2000ms recommended!
-- **Global Speed Slider**: Slide it all the way to 100% to hit **Absolute Boost**. The values dynamically drop to bare minimums (Tab/Row `50ms`, Key `10ms`). You can granularly bump any variable if the host OS acts sluggish.
-- **Standalone Mouse Jiggler**: Switch on at the very top of the UI. Configures an untraceable, completely decoupled pulse of movement (e.g. 10 seconds default) to continuously reset screen-sleep timers.
+- **Start Countdown (ms)**: The board waits this long after you press Execute before typing begins. Use this time to click the exact form field or spreadsheet cell on the target PC. Default `2000ms` (2 seconds).
+- **Global Speed Slider**: Drag to 100% for **Absolute Boost** (Tab/Enter `50ms`, Key `10ms`). Drag to 0% for a very conservative `1500ms` Enter gaps for slow hosts. All fields below update live.
+- **After TAB — Wait (ms)**: Pause after pressing Tab to let the host PC move focus to the next cell. Increase if the host is slow or the form has lazy rendering.
+- **After ENTER — Wait (ms)**: Pause after pressing Enter to let the host move to the next row. High values (800ms+) recommended for complex spreadsheets.
+- **Between Lines — Wait (ms)**: Additional pause between typed string segments on the same row.
 
-### Stealth Evasion Tuners
-- **Humanize Typing**: Dramatically increases execution time by printing char-by-char with varying gaussian-like logic, but ensures extreme EDR stealth.
-- **Jiggle Frequency / Pixels**: When toggling Humanize, tweak exactly how frequently and how far the fake mouse jumps during the typing sequence. Automatically drift-stabilized!
+### Standalone Mouse Jiggler
+Enable from the toggle at the top of the UI. Expand the config to set:
+- **Mouse Move Distance (px)**: Max pixels the cursor moves per jiggle (1–127px). Returns immediately — invisible to user.
+- **Jiggle Every (seconds)**: Interval in seconds between jiggles.
+- **Randomize Distance**: When checked, jiggle distance is random from 1px up to the max set. When unchecked, always moves the exact distance set.
+
+### Mouse Jiggler While Typing (EDR Evasion)
+- **Jiggle Chance per Keystroke (%)**: Probability that any given typed character will trigger a mouse movement. 15% = roughly every 7th key.
+- **Maximum Jiggle Distance (px)**: Hard cap in pixels for the jiggle. Drift-free — the board tracks every move and snaps back automatically.
 
 ---
 
