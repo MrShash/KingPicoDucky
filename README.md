@@ -1,4 +1,4 @@
-# KingPicoDucky (v2.3)
+# KingPicoDucky (v2.0)
 
 **The Ultimate Wireless HID Auto-Feeder for Raspberry Pi Pico W / Pico 2 W**
 
