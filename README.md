@@ -21,6 +21,7 @@ Maintained by **KingShash** (Shaswat Manoj Jha).
 - [🚀 Beginner's Install Guide](#-beginners-install-guide)
 - [🕹️ How to Use (Web Interface)](#%EF%B8%8F-how-to-use-web-interface)
 - [⚙️ Advanced Settings & Tuning](#%EF%B8%8F-advanced-settings--tuning)
+- [🧩 Mnemonic Script Reference](#-mnemonic-script-reference)
 - [🔌 REST API Reference](#-rest-api-reference)
 - [❓ Troubleshooting](#-troubleshooting)
 
@@ -112,7 +113,7 @@ Save, and reset the Pico (unplug and re-plug it).
 2. On your **phone or second PC**, join the Wi-Fi network you set up in `network.conf` (`PicoDuckyNet`). 
 3. Open your browser and go to `http://192.168.4.1/`. You'll see the futuristic Glassmorphism KingPicoDucky dashboard.
 4. **Optional — Enable Standalone Jiggler**: If you want to keep the target PC awake while you set up, flip the **Standalone Mouse Jiggler** toggle at the top.
-5. **Paste your Data**: Take a massive Excel file column or thousands of lines of text and paste it into the Payload Input.
+5. **Paste your Data or Script**: Take a massive Excel file column or thousands of lines of text and paste it into the Payload Input. Alternatively, enable the **⌨ Direct Mnemonic Script** toggle and type raw HID instructions (see [Mnemonic Script Reference](#-mnemonic-script-reference) below).
 6. **Set Speed**: Drag the **Global Typing Speed** slider or manually tune the TAB/ENTER/Key delay fields below it.
 7. **Optionally enable Mouse Jiggler While Typing**: If the target environment uses EDR, turn this on. You can control how often and how far the mouse jiggles.
 8. **Hit "Execute Payload"**: The tool will begin automatically typing everything onto the Target PC. Watch the hacker-style Terminal Output, chunk counter, and live ETA!
@@ -144,6 +145,65 @@ Enable from the toggle at the top of the UI. Expand the config to set:
 ### Mouse Jiggler While Typing (EDR Evasion)
 - **Jiggle Chance per Keystroke (%)**: Probability that any given typed character will trigger a mouse movement. 15% = roughly every 7th key.
 - **Maximum Jiggle Distance (px)**: Hard cap in pixels for the jiggle. Drift-free — the board tracks every move and snaps back automatically.
+
+---
+
+## 🧩 Mnemonic Script Reference
+
+KingPicoDucky supports a simple, line-based HID scripting language. You can write scripts directly in the Payload Input by enabling the **⌨ Direct Mnemonic Script** toggle — instructions are sent to the Pico as-is, bypassing the auto-wrapping that normal text paste uses.
+
+### Instructions
+
+| Instruction | Example | Description |
+|---|---|---|
+| `TYPE <text>` | `TYPE Hello World` | Types the given text as keyboard output. |
+| `WAIT <ms>` | `WAIT 500` | Pauses execution for the given number of milliseconds. |
+| `ENTER` | `ENTER` | Presses the Enter / Return key. |
+| `TAB` | `TAB` | Presses the Tab key. |
+| `SPACE` | `SPACE` | Presses the Space key. |
+| `BKSP` | `BKSP` | Presses Backspace. |
+| `DEL` | `DEL` | Presses Delete. |
+| `INSERT` | `INSERT` | Presses Insert. |
+| `ESC` | `ESC` | Presses Escape. |
+| `CAPS` | `CAPS` | Toggles Caps Lock. |
+| `<MODIFIER> <KEY>` | `CTRL C` | Holds modifier + presses key (chord). |
+| `GUI R` | `GUI R` | Opens the Run dialog on Windows (Win+R). |
+| `F1` – `F12` | `F5` | Presses the corresponding function key. |
+| Arrow keys | `LEFT` / `RIGHT` / `UP` / `DOWN` | Presses the corresponding arrow key. |
+| `HOME` / `END` | `HOME` | Presses Home or End. |
+| `PGUP` / `PGDN` | `PGUP` | Presses Page Up or Page Down. |
+| `PRTSCR` | `PRTSCR` | Presses Print Screen. |
+| `PAUSE` | `PAUSE` | Presses Pause / Break. |
+| `NUM` | `NUM` | Toggles Num Lock. |
+| `SCROLL` | `SCROLL` | Toggles Scroll Lock. |
+| `APP` | `APP` | Presses the Application / Menu key. |
+| `LOOP <n>` / `EXIT` | `LOOP 3` … `EXIT` | Repeats the enclosed block `n` times. |
+| `INF` / `EXIT` | `INF` … `EXIT` | Repeats the enclosed block forever (until aborted). |
+
+### Modifier Keys (for chords)
+
+| Mnemonic | Key |
+|---|---|
+| `CTRL` | Left Control |
+| `SHIFT` | Left Shift |
+| `ALT` | Left Alt |
+| `GUI` | Windows / Command / Super |
+
+> **Tip:** Modifiers and keys can be chained on a single line for combos: `CTRL SHIFT ESC` opens Task Manager on Windows.
+
+### Example Script
+
+```
+WAIT 2000
+GUI R
+WAIT 500
+TYPE notepad
+ENTER
+WAIT 1000
+TYPE Hello from KingPicoDucky!
+ENTER
+CTRL S
+```
 
 ---
 
